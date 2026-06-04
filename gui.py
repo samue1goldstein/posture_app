@@ -235,6 +235,11 @@ class PostureAPI:
         """Called from the JS Resume button."""
         self.resume_tracking()
 
+    def pause_js(self) -> dict:
+        """Called from the JS Pause button — 30-second demo pause."""
+        self.detector.pause_for(30)
+        return {'ok': True}
+
     def toggle_hell_mode(self) -> None:
         from notifier import send_notification
         self._hell_mode         = not self._hell_mode

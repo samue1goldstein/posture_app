@@ -2,473 +2,666 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>posture v0.3</title>
+  <title>posture v2</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ── Tab bar ──────────────────────────────────────────────────────────── -->
-<nav class="tab-bar">
-  <button class="tab-btn active" data-tab="dashboard">  Dashboard  </button>
-  <button class="tab-btn"        data-tab="profiles" >  Profiles  </button>
-  <button class="tab-btn"        data-tab="settings" >  Settings  </button>
-</nav>
+<!-- Hell bar (top red stripe in hell mode) -->
+<div id="hell-bar" class="hell-bar hidden"></div>
 
-<!-- ═══════════════════════ DASHBOARD ════════════════════════════════════ -->
-<div id="tab-dashboard" class="tab-pane visible">
-
-  <div id="freeze-banner" class="freeze-banner hidden">
-    ⏸&nbsp; Camera frozen — posture break active
-  </div>
-
-  <!-- Camera -->
-  <div class="cam-wrap">
-    <div class="cam-border">
-      <img id="cam-feed" class="cam-feed" src="" alt="" draggable="false">
-    </div>
-  </div>
-
-  <!-- Stats cards -->
-  <div class="card-row">
-    <div class="card">
-      <div class="card-label">STATUS</div>
-      <div id="status-val" class="status-val status-red">● Stopped</div>
-      <div id="pose-txt"   class="pose-txt">No pose detected</div>
-    </div>
-    <div class="card">
-      <div class="card-label">ACTIVE PROFILE</div>
-      <div id="profile-val" class="profile-val">None</div>
-    </div>
-    <div class="card ring-card">
-      <div class="card-label">POSTURE SCORE</div>
-      <canvas id="posture-ring" width="118" height="118"></canvas>
-    </div>
-  </div>
-
-  <!-- Action buttons -->
-  <div class="btn-row">
-    <button id="toggle-btn"   class="btn btn-primary" onclick="toggleMonitoring()">Start Monitoring</button>
-    <button id="calib-btn"    class="btn btn-ghost"   onclick="promptCalibrate()">Calibrate &amp; Save</button>
-    <button id="resume-btn"   class="btn btn-ghost hidden" onclick="resumeTracking()">▶&nbsp; Resume Tracking</button>
-    <button id="minimize-btn" class="btn btn-ghost ml-auto" onclick="minimizeToTray()">⬇&nbsp; Minimize to Tray</button>
-  </div>
-
-  <!-- Calibration progress (hidden until active) -->
-  <div id="calib-section" class="calib-section hidden">
-    <div class="calib-label">Sit up straight and hold still…</div>
-    <div class="progress-track">
-      <div id="calib-bar" class="progress-bar"></div>
-    </div>
-  </div>
+<!-- Minimized / tray view -->
+<div id="minimized-view" class="minimized-view hidden">
+  <div class="min-icon">⬇</div>
+  <div class="min-label">posture v2 is running in the system tray</div>
+  <button class="btn btn-ghost" onclick="dispatch('minimize')">Restore Window</button>
 </div>
 
-<!-- ═══════════════════════ PROFILES ══════════════════════════════════════ -->
-<div id="tab-profiles" class="tab-pane">
-  <div class="section-hdr">
-    <h2>Posture Profiles</h2>
-    <p>Add a profile for each setup — sitting, standing, gaming, etc.
-       Switch the active one to match your current position.</p>
+<!-- Main app wrapper -->
+<div id="app">
+
+  <!-- Tab bar -->
+  <nav class="tab-bar">
+    <button id="tab-btn-dashboard" class="tab-btn active" data-tab="dashboard" onclick="dispatch('switchTab','dashboard')">Dashboard</button>
+    <button id="tab-btn-profiles"  class="tab-btn"        data-tab="profiles"  onclick="dispatch('switchTab','profiles')">Profiles</button>
+    <button id="tab-btn-settings"  class="tab-btn"        data-tab="settings"  onclick="dispatch('switchTab','settings')">Settings</button>
+  </nav>
+
+  <!-- ═══ DASHBOARD ══════════════════════════════════════════════════════ -->
+  <div id="tab-dashboard" class="tab-pane visible">
+
+    <!-- Left column -->
+    <div class="dash-left">
+
+      <!-- Camera -->
+      <div class="cam-container" id="cam-container">
+        <div class="cam-placeholder" id="cam-placeholder">
+          <div class="cam-stripes"></div>
+          <div class="cam-ph-content">
+            <svg class="silhouette" viewBox="0 0 72 84" fill="none">
+              <circle cx="36" cy="20" r="15" stroke="#6060a0" stroke-width="2.2"/>
+              <path d="M6 84 Q6 50 36 50 Q66 50 66 84" stroke="#6060a0" stroke-width="2.2" fill="none"/>
+            </svg>
+            <span class="cam-ph-label">camera feed</span>
+          </div>
+        </div>
+        <img id="cam-feed" class="cam-feed hidden" src="" alt="" draggable="false">
+        <div id="cam-live-badge"    class="cam-live-badge hidden">● LIVE</div>
+        <div id="cam-skeleton-text" class="cam-skeleton-text hidden">skeleton overlay · pose landmarks render here</div>
+        <div id="cam-pause-overlay" class="cam-pause-overlay hidden">
+          <div class="pause-icon">⏸</div>
+          <div id="cam-pause-label" class="cam-pause-label">Posture break</div>
+        </div>
+      </div>
+
+      <!-- Status chips -->
+      <div class="chip-row">
+        <div id="status-chip" class="chip chip-red">● Stopped</div>
+        <div id="pose-chip"   class="chip chip-muted hidden">Searching…</div>
+      </div>
+
+      <!-- Calibration progress (hidden until active) -->
+      <div id="calib-card" class="calib-card hidden">
+        <div class="calib-label">Sit up straight and hold still…</div>
+        <div class="progress-track">
+          <div id="calib-bar" class="progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Primary actions -->
+      <div class="action-row">
+        <button id="toggle-btn" class="btn btn-primary" onclick="dispatch('toggleMonitoring')">Start Monitoring</button>
+        <button class="btn btn-ghost" onclick="dispatch('calibrate')">Calibrate &amp; Save</button>
+      </div>
+
+      <!-- Resume (shown when paused/frozen) -->
+      <div id="resume-row" class="resume-row hidden">
+        <button class="btn btn-ghost btn-resume" onclick="dispatch('resume')">▶ Resume Tracking</button>
+      </div>
+
+    </div><!-- /dash-left -->
+
+    <!-- Vertical divider -->
+    <div class="dash-divider"></div>
+
+    <!-- Right column -->
+    <div class="dash-right">
+
+      <!-- Posture score ring -->
+      <div class="score-card">
+        <div class="score-label">POSTURE SCORE</div>
+        <canvas id="posture-ring" width="162" height="162" ondblclick="dispatch('toggleHell')"></canvas>
+      </div>
+
+      <!-- Active profile -->
+      <div class="active-profile-card">
+        <div class="score-label">ACTIVE PROFILE</div>
+        <div id="active-profile-row" class="active-profile-row">
+          <span class="ap-name none">No profile selected</span>
+        </div>
+      </div>
+
+      <!-- Bottom actions -->
+      <div class="right-actions">
+        <button id="snooze-btn" class="btn btn-ghost hidden" onclick="dispatch('snooze')">🔕 Snooze Alerts</button>
+        <button id="pause-btn"  class="btn btn-ghost hidden" onclick="dispatch('pause')">⏸ Pause (30 s demo)</button>
+        <button class="btn btn-ghost" onclick="dispatch('minimize')">⬇ Minimize to Tray</button>
+      </div>
+
+    </div><!-- /dash-right -->
+  </div><!-- /tab-dashboard -->
+
+  <!-- ═══ PROFILES ═══════════════════════════════════════════════════════ -->
+  <div id="tab-profiles" class="tab-pane">
+    <div class="profiles-header">
+      <h2>Posture Profiles</h2>
+      <p>Add a profile for each setup — sitting, standing, gaming, etc.<br>Switch the active one to match your current position.</p>
+    </div>
+    <div id="profiles-list" class="profiles-list"></div>
+    <div class="profiles-footer">
+      <button class="btn btn-dashed" onclick="dispatch('addProfile')">+ Add Profile</button>
+    </div>
   </div>
 
-  <div class="profile-list-wrap">
-    <ul id="profile-list" class="profile-list"></ul>
+  <!-- ═══ SETTINGS ════════════════════════════════════════════════════════ -->
+  <div id="tab-settings" class="tab-pane">
+    <div class="settings-wrap">
+
+      <div class="settings-section-label">DETECTION</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <label class="settings-lbl">Check interval (seconds)</label>
+          <input id="s-interval" class="num-input" type="number" min="1" max="60" value="5">
+        </div>
+        <div class="settings-row">
+          <label class="settings-lbl">Sensitivity</label>
+          <div class="range-row">
+            <input id="s-sens" type="range" min="0.05" max="0.50" step="0.01" value="0.20"
+                   oninput="document.getElementById('s-sens-val').textContent=parseFloat(this.value).toFixed(2)">
+            <span id="s-sens-val" class="range-val">0.20</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-lbl">Camera index</label>
+          <input id="s-cam" class="num-input" type="number" min="0" max="10" value="0">
+        </div>
+      </div>
+
+      <div class="settings-section-label">NOTIFICATIONS</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <label class="settings-lbl">Cooldown (minutes)</label>
+          <input id="s-cooldown" class="num-input" type="number" min="1" max="60" value="5">
+        </div>
+      </div>
+
+      <div class="settings-section-label">SYSTEM</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <label class="settings-lbl">Run on startup</label>
+          <div id="startup-toggle" class="toggle-switch" data-on="false" onclick="toggleStartup()">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="save-btn-wrap">
+        <button id="save-btn" class="btn btn-primary" onclick="dispatch('saveSettings')">Save Settings</button>
+      </div>
+
+    </div>
   </div>
 
-  <div class="btn-row">
-    <button class="btn btn-primary" onclick="setActiveProfile()">Set as Active</button>
-    <button class="btn btn-ghost"   onclick="promptAddProfile()">Add New Profile</button>
-    <button class="btn btn-ghost"   onclick="promptRenameProfile()">Rename</button>
-    <button class="btn btn-ghost"   onclick="deleteProfile()">Delete</button>
-  </div>
-</div>
+</div><!-- /app -->
 
-<!-- ═══════════════════════ SETTINGS ══════════════════════════════════════ -->
-<div id="tab-settings" class="tab-pane">
-  <div class="settings-grid">
-
-    <div class="lbl">Check interval (seconds)</div>
-    <div class="ctrl">
-      <input id="s-interval" type="number" min="1" max="60" value="5">
-    </div>
-
-    <div class="lbl">Notification cooldown (minutes)</div>
-    <div class="ctrl">
-      <input id="s-cooldown" type="number" min="1" max="60" value="5">
-    </div>
-
-    <div class="lbl">Sensitivity&nbsp; (lower = stricter)</div>
-    <div class="ctrl">
-      <input id="s-sens" type="range" min="0.05" max="0.50" step="0.01" value="0.20"
-             oninput="document.getElementById('s-sens-val').textContent = (+this.value).toFixed(2)">
-      <span id="s-sens-val" class="sens-val">0.20</span>
-    </div>
-
-    <div class="lbl">Camera index</div>
-    <div class="ctrl">
-      <input id="s-cam" type="number" min="0" max="10" value="0">
-    </div>
-
-    <div class="sep"></div>
-
-    <div class="lbl">Run on startup</div>
-    <div class="ctrl">
-      <label class="checkbox-row">
-        <input id="s-startup" type="checkbox">
-        Launch posture v0.3 when Windows starts
-      </label>
-    </div>
-
-    <div class="sep"></div>
-
-    <div class="lbl"></div>
-    <div class="ctrl">
-      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-    </div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════ MODAL ══════════════════════════════════════════ -->
-<div id="modal" class="modal-overlay hidden">
+<!-- ═══ MODAL ════════════════════════════════════════════════════════════ -->
+<div id="modal" class="modal-overlay hidden" onclick="modalBackdropClick(event)">
   <div class="modal-box">
     <div id="modal-title" class="modal-title"></div>
     <div id="modal-msg"   class="modal-msg hidden"></div>
     <input id="modal-input" class="modal-input hidden" type="text" autocomplete="off">
     <div class="modal-btns">
-      <button id="modal-cancel" class="btn btn-ghost" onclick="modalReject()">Cancel</button>
-      <button id="modal-ok"     class="btn btn-primary" onclick="modalResolve()">OK</button>
+      <button id="modal-cancel" class="btn btn-ghost hidden" onclick="modalReject()">Cancel</button>
+      <button id="modal-ok"     class="btn btn-primary"      onclick="modalResolve()">OK</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════ SCRIPT ═════════════════════════════════════════ -->
 <script>
 'use strict';
 
-/* ── State ──────────────────────────────────────────────────────────────── */
-let selectedProfile = null;   // name string or null
-let calibInProgress = false;
-let statusPollId    = null;
-let framePollId     = null;
-let hellMode        = false;
+/* ── App state ──────────────────────────────────────────────────────────── */
+const S = {
+  // Backend-driven
+  running: false, paused: false, pauseRemaining: 0,
+  snoozed: false, poseDetected: false, quality: null,
+  activeProfile: null, calibInProgress: false, calibProgress: 0,
+  frozen: false,
+  // UI
+  activeTab: 'dashboard',
+  hellMode: false,
+  minimized: false,
+  // Profiles
+  profiles: [], selectedProfile: null,
+  // Save-settings flash
+  savedFeedback: false,
+};
 
-/* ── Boot ───────────────────────────────────────────────────────────────── */
-window.addEventListener('pywebviewready', () => {
-  initTabs();
-  loadSettings();
-  loadProfiles();
-  startPolling();
-});
+let _calibDoneHandling = false;
 
-/* ── Tab switching ──────────────────────────────────────────────────────── */
-function initTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('visible'));
-      btn.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('visible');
-      if (tab === 'profiles') loadProfiles();
-    });
-  });
-}
-
-/* ── Polling loops ───────────────────────────────────────────────────────── */
-function startPolling() {
-  framePollId  = setInterval(updateFrame,  66);
-  statusPollId = setInterval(updateStatus, 300);
-}
-
-async function updateFrame() {
+/* ── API helper ─────────────────────────────────────────────────────────── */
+async function api(method, ...args) {
   try {
-    const data = await window.pywebview.api.get_frame();
-    if (data) document.getElementById('cam-feed').src = data;
-  } catch (_) {}
+    if (!window.pywebview || !window.pywebview.api) return null;
+    return await window.pywebview.api[method](...args);
+  } catch (e) {
+    console.warn('api', method, e);
+    return null;
+  }
 }
 
-async function updateStatus() {
-  let s;
-  try { s = await window.pywebview.api.get_status(); } catch (_) { return; }
+/* ── Dispatcher ─────────────────────────────────────────────────────────── */
+async function dispatch(action, payload) {
+  switch (action) {
 
-  // Toggle button text
-  document.getElementById('toggle-btn').textContent =
-    s.running ? 'Stop Monitoring' : 'Start Monitoring';
+    case 'toggleMonitoring': {
+      const res = await api('toggle_monitoring');
+      if (res && !res.ok && res.error === 'no_profile')
+        await alert2('No Profile', 'Add and activate a posture profile first.\n\nGo to Profiles → Add New Profile.');
+      break;
+    }
 
-  // Status dot
-  const sv = document.getElementById('status-val');
-  if (s.paused) {
-    const m = Math.floor(s.pause_remaining / 60).toString().padStart(2, '0');
-    const sec = (s.pause_remaining % 60).toString().padStart(2, '0');
-    sv.textContent = `⏸  Paused — ${m}:${sec}`;
-    sv.className = 'status-val status-orange';
-  } else if (s.snoozed) {
-    sv.textContent = '🔕  Snoozed';
-    sv.className = 'status-val status-orange';
-  } else if (s.running) {
-    sv.textContent = '● Monitoring';
-    sv.className = 'status-val status-green';
-  } else {
-    sv.textContent = '● Stopped';
-    sv.className = 'status-val status-red';
-  }
+    case 'calibrate': {
+      const name = await prompt2('Save Profile', 'Name this posture profile\n(e.g. Sitting Desk, Standing, Gaming):', 'Sitting Desk');
+      if (name === null) break;
+      await api('start_calibration', name);
+      break;
+    }
 
-  // Pose text
-  const pt = document.getElementById('pose-txt');
-  pt.textContent = s.pose_detected ? 'Pose detected' : 'No pose detected';
-  pt.className = 'pose-txt' + (s.pose_detected ? ' detected' : '');
+    case 'pause':  { await api('pause_js');           break; }
+    case 'resume': { await api('resume_tracking_js'); break; }
+    case 'snooze': { await api('toggle_snooze');      break; }
 
-  // Active profile
-  const pv = document.getElementById('profile-val');
-  pv.textContent = s.active_profile || 'None';
-  pv.className = 'profile-val' + (s.active_profile ? ' set' : '');
+    case 'setActive': {
+      await api('set_active_profile', payload);
+      await loadProfiles();
+      break;
+    }
 
-  // Posture ring
-  drawRing(document.getElementById('posture-ring'), s.quality);
+    case 'addProfile': {
+      const name = await prompt2('New Profile', 'Enter a name for this profile:', '');
+      if (name === null) break;
+      const exists = await api('check_profile_exists', name);
+      if (exists) { await alert2('Duplicate', `'${escHtml(name)}' already exists.`); break; }
+      await api('start_calibration', name);
+      dispatch('switchTab', 'dashboard');
+      break;
+    }
 
-  // Freeze banner / resume button
-  document.getElementById('freeze-banner').classList.toggle('hidden', !s.frozen);
-  document.getElementById('resume-btn').classList.toggle('hidden', !s.frozen);
+    case 'rename': {
+      const old = payload;
+      const nv = await prompt2('Rename', `Rename '${old}' to:`, old);
+      if (nv === null) break;
+      const res = await api('rename_profile', old, nv);
+      if (!res) break;
+      if (!res.ok) {
+        if (res.error === 'duplicate') await alert2('Duplicate', `'${escHtml(nv)}' already exists.`);
+        else await alert2('Error', `Could not rename: ${res.error}`);
+        break;
+      }
+      if (S.selectedProfile === old) S.selectedProfile = nv;
+      await loadProfiles();
+      break;
+    }
 
-  // Calibration progress
-  if (s.calib_in_progress) {
-    calibInProgress = true;
-    document.getElementById('calib-section').classList.remove('hidden');
-    document.getElementById('calib-bar').style.width = (s.calib_progress * 100) + '%';
-  } else if (calibInProgress) {
-    calibInProgress = false;
-    document.getElementById('calib-section').classList.add('hidden');
-    document.getElementById('calib-bar').style.width = '0%';
-  }
+    case 'delete': {
+      const name = payload;
+      const yes = await confirm2(`Delete '${name}'?`);
+      if (!yes) break;
+      await api('delete_profile', name);
+      if (S.selectedProfile === name) S.selectedProfile = null;
+      await loadProfiles();
+      break;
+    }
 
-  // Calibration done (one-shot)
-  if (s.calib_done_name) {
-    loadProfiles();
-    const activate = await confirm2(`'${s.calib_done_name}' saved.\nActivate it now?`);
-    if (activate) {
-      await window.pywebview.api.set_active_profile(s.calib_done_name);
-      loadProfiles();
+    case 'saveSettings': {
+      const data = gatherSettings();
+      const res = await api('save_settings_data', data);
+      if (res && res.ok) {
+        S.savedFeedback = true;
+        render();
+        setTimeout(() => { S.savedFeedback = false; render(); }, 2000);
+      } else if (res) {
+        await alert2('Error', `Could not save:\n${res.error}`);
+      }
+      break;
+    }
+
+    case 'toggleHell': {
+      try { await window.pywebview.api.toggle_hell_mode(); }
+      catch (_) { S.hellMode = !S.hellMode; applyHell(); }
+      break;
+    }
+
+    case 'minimize': {
+      if (S.minimized) {
+        S.minimized = false;
+        render();
+      } else {
+        S.minimized = true;
+        render();
+        await api('minimize_to_tray');
+      }
+      break;
+    }
+
+    case 'switchTab': {
+      S.activeTab = payload;
+      if (payload === 'profiles') await loadProfiles();
+      if (payload === 'settings') await loadSettings();
+      render();
+      break;
     }
   }
 }
 
-/* ── Posture ring canvas ─────────────────────────────────────────────────── */
-function getCSSVar(name) {
-  return getComputedStyle(document.body).getPropertyValue(name).trim();
+/* ── Render ─────────────────────────────────────────────────────────────── */
+function render() {
+  // Minimized overlay
+  el('minimized-view').classList.toggle('hidden', !S.minimized);
+  el('app').classList.toggle('hidden',  S.minimized);
+  if (S.minimized) return;
+
+  // Tab buttons
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === S.activeTab)
+  );
+  document.querySelectorAll('.tab-pane').forEach(p =>
+    p.classList.toggle('visible', p.id === 'tab-' + S.activeTab)
+  );
+
+  const pausing = S.paused || S.frozen;
+
+  // Toggle button text
+  el('toggle-btn').textContent = S.running ? 'Stop Monitoring' : 'Start Monitoring';
+
+  // Status chip
+  const sc = el('status-chip');
+  if (pausing) {
+    const m = Math.floor(S.pauseRemaining / 60);
+    const s = String(S.pauseRemaining % 60).padStart(2, '0');
+    sc.textContent = `⏸ Paused — ${m}:${s}`;
+    sc.className = 'chip chip-amber';
+  } else if (S.snoozed) {
+    sc.textContent = '🔕 Snoozed';
+    sc.className = 'chip chip-amber';
+  } else if (S.running) {
+    sc.textContent = '● Monitoring';
+    sc.className = 'chip chip-green';
+  } else {
+    sc.textContent = '● Stopped';
+    sc.className = 'chip chip-red';
+  }
+
+  // Pose chip
+  const pc = el('pose-chip');
+  if (S.running) {
+    pc.classList.remove('hidden');
+    if (S.poseDetected) {
+      pc.textContent = 'Pose detected';
+      pc.className = 'chip chip-green';
+    } else {
+      pc.textContent = 'Searching…';
+      pc.className = 'chip chip-muted';
+    }
+  } else {
+    pc.classList.add('hidden');
+  }
+
+  // Camera
+  const placeholder   = el('cam-placeholder');
+  const feed          = el('cam-feed');
+  const liveBadge     = el('cam-live-badge');
+  const skelText      = el('cam-skeleton-text');
+  const pauseOverlay  = el('cam-pause-overlay');
+
+  if (pausing) {
+    placeholder.classList.add('hidden');
+    feed.classList.remove('hidden');
+    liveBadge.classList.add('hidden');
+    skelText.classList.add('hidden');
+    pauseOverlay.classList.remove('hidden');
+    const m = Math.floor(S.pauseRemaining / 60);
+    const s = String(S.pauseRemaining % 60).padStart(2, '0');
+    el('cam-pause-label').textContent = `Posture break — ${m}:${s} remaining`;
+  } else if (S.running) {
+    placeholder.classList.add('hidden');
+    feed.classList.remove('hidden');
+    liveBadge.classList.remove('hidden');
+    skelText.classList.remove('hidden');
+    pauseOverlay.classList.add('hidden');
+  } else {
+    placeholder.classList.remove('hidden');
+    feed.classList.add('hidden');
+    liveBadge.classList.add('hidden');
+    skelText.classList.add('hidden');
+    pauseOverlay.classList.add('hidden');
+  }
+
+  // Calibration card
+  if (S.calibInProgress) {
+    el('calib-card').classList.remove('hidden');
+    el('calib-bar').style.width = (S.calibProgress * 100) + '%';
+  } else {
+    el('calib-card').classList.add('hidden');
+  }
+
+  // Resume row
+  el('resume-row').classList.toggle('hidden', !pausing);
+
+  // Active profile
+  const apRow = el('active-profile-row');
+  if (S.activeProfile) {
+    apRow.innerHTML = `<span class="ap-name">${escHtml(S.activeProfile)}</span><span class="active-chip">ACTIVE</span>`;
+  } else {
+    apRow.innerHTML = `<span class="ap-name none">No profile selected</span>`;
+  }
+
+  // Snooze / Pause buttons
+  const snoozeBtn = el('snooze-btn');
+  const pauseBtn  = el('pause-btn');
+  if (S.running && !pausing) {
+    snoozeBtn.classList.remove('hidden');
+    snoozeBtn.textContent = S.snoozed ? '🔔 Resume Alerts' : '🔕 Snooze Alerts';
+    pauseBtn.classList.toggle('hidden', S.snoozed);
+  } else {
+    snoozeBtn.classList.add('hidden');
+    pauseBtn.classList.add('hidden');
+  }
+
+  // Score ring
+  drawRing(el('posture-ring'), S.running ? S.quality : null);
+
+  // Save button feedback
+  el('save-btn').textContent = S.savedFeedback ? '✓ Saved' : 'Save Settings';
+
+  // Hell visuals
+  applyHell();
+}
+
+/* ── Hell mode ──────────────────────────────────────────────────────────── */
+function applyHell() {
+  document.body.classList.toggle('hell', S.hellMode);
+  el('hell-bar').classList.toggle('hidden', !S.hellMode);
+  const dashBtn = el('tab-btn-dashboard');
+  if (dashBtn) dashBtn.textContent = S.hellMode ? 'Dashboard 🔥' : 'Dashboard';
+  document.title = S.hellMode ? 'posture v2 🔥' : 'posture v2';
+}
+
+/* ── Score ring canvas ──────────────────────────────────────────────────── */
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 function drawRing(canvas, quality) {
   const ctx = canvas.getContext('2d');
-  const s = 118, tw = 11, cx = 59, cy = 59, r = 49;
+  const size = 162, tw = 14, cx = 81, cy = 81, r = 63;
 
-  ctx.clearRect(0, 0, s, s);
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = cssVar('--card');
+  ctx.fillRect(0, 0, size, size);
 
-  // Card background
-  ctx.fillStyle = getCSSVar('--bg-card');
-  ctx.fillRect(0, 0, s, s);
-
-  // Track ring
+  // Track
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-  ctx.strokeStyle = getCSSVar('--bg-raised');
+  ctx.strokeStyle = cssVar('--raised');
   ctx.lineWidth = tw;
   ctx.stroke();
 
   if (quality === null || quality === undefined) {
-    ctx.fillStyle = getCSSVar('--text-muted');
+    ctx.fillStyle = cssVar('--muted');
     ctx.textAlign = 'center';
-    ctx.font = 'bold 24px "Segoe UI", sans-serif';
-    ctx.fillText('—', cx, cy - 2);
-    ctx.font = '8px "Segoe UI", sans-serif';
-    ctx.fillText('no data', cx, cy + 16);
+    ctx.font = 'bold 30px "Segoe UI", sans-serif';
+    ctx.fillText('—', cx, cy + 10);
+    ctx.font = '11px "Segoe UI", sans-serif';
+    ctx.fillStyle = cssVar('--faint');
+    ctx.fillText('no data', cx, cy + 30);
     return;
   }
 
-  const color = quality >= 0.65 ? '#4ade80' : quality >= 0.35 ? '#fb923c' : '#f87171';
+  const color = quality >= 0.65 ? '#4ade80' : quality >= 0.35 ? '#f59e0b' : '#f87171';
   const label = quality >= 0.65 ? 'Good'    : quality >= 0.35 ? 'Fair'    : 'Poor';
 
-  if (quality > 0.001) {
+  if (quality > 0.002) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + quality * 2 * Math.PI, false);
     ctx.strokeStyle = color;
     ctx.lineWidth = tw;
+    ctx.lineCap = 'round';
     ctx.stroke();
   }
 
-  ctx.fillStyle = getCSSVar('--text');
+  ctx.fillStyle = cssVar('--text');
   ctx.textAlign = 'center';
-  ctx.font = 'bold 19px "Segoe UI", sans-serif';
-  ctx.fillText(Math.round(quality * 100) + '%', cx, cy + 2);
+  ctx.font = 'bold 26px "Segoe UI", sans-serif';
+  ctx.fillText(Math.round(quality * 100) + '%', cx, cy + 9);
 
   ctx.fillStyle = color;
-  ctx.font = 'bold 9px "Segoe UI", sans-serif';
-  ctx.fillText(label, cx, cy + 17);
+  ctx.font = 'bold 11px "Segoe UI", sans-serif';
+  ctx.fillText(label, cx, cy + 27);
 }
 
-/* ── Monitoring ──────────────────────────────────────────────────────────── */
-async function toggleMonitoring() {
-  const res = await window.pywebview.api.toggle_monitoring();
-  if (!res.ok && res.error === 'no_profile') {
-    await alert2(
-      'No Profile',
-      'Add and activate a posture profile first.\n\nGo to Profiles → Add New Profile.'
-    );
+/* ── Polling ────────────────────────────────────────────────────────────── */
+async function updateFrame() {
+  if (!S.running || S.paused || S.frozen) return;
+  const data = await api('get_frame');
+  if (data) el('cam-feed').src = data;
+}
+
+async function updateStatus() {
+  const s = await api('get_status');
+  if (!s) return;
+
+  S.running          = s.running;
+  S.paused           = s.paused;
+  S.pauseRemaining   = s.pause_remaining;
+  S.snoozed          = s.snoozed;
+  S.poseDetected     = s.pose_detected;
+  S.quality          = s.quality;
+  S.activeProfile    = s.active_profile;
+  S.calibInProgress  = s.calib_in_progress;
+  S.calibProgress    = s.calib_progress || 0;
+  S.frozen           = s.frozen;
+
+  render();
+
+  if (s.calib_done_name && !_calibDoneHandling) {
+    _calibDoneHandling = true;
+    const n = s.calib_done_name;
+    await loadProfiles();
+    const activate = await confirm2(`'${n}' saved.\nActivate it now?`);
+    if (activate) {
+      await api('set_active_profile', n);
+      await loadProfiles();
+    }
+    _calibDoneHandling = false;
   }
 }
 
-/* ── Calibrate & Save (dashboard button) ────────────────────────────────── */
-async function promptCalibrate() {
-  const name = await prompt2('Save Profile', 'Name this posture profile\n(e.g. Sitting Desk, Standing, Gaming):', 'Sitting Desk');
-  if (name === null) return;
-  await window.pywebview.api.start_calibration(name);
-}
-
-/* ── Resume tracking ─────────────────────────────────────────────────────── */
-async function resumeTracking() {
-  await window.pywebview.api.resume_tracking_js();
-}
-
-/* ── Minimize to tray ────────────────────────────────────────────────────── */
-async function minimizeToTray() {
-  await window.pywebview.api.minimize_to_tray();
-}
-
-/* ── Profiles tab ────────────────────────────────────────────────────────── */
+/* ── Profiles ───────────────────────────────────────────────────────────── */
 async function loadProfiles() {
-  let profiles;
-  try { profiles = await window.pywebview.api.get_profiles(); } catch (_) { return; }
-  const list = document.getElementById('profile-list');
-  list.innerHTML = '';
-  profiles.forEach(p => {
-    const li = document.createElement('li');
-    li.className = 'profile-item' + (p.name === selectedProfile ? ' selected' : '');
-    li.dataset.name = p.name;
-    li.innerHTML = `<span class="star${p.active ? '' : ' hidden'}">★</span> ${escHtml(p.name)}`;
-    li.addEventListener('click', () => {
-      selectedProfile = p.name;
-      document.querySelectorAll('.profile-item').forEach(el =>
-        el.classList.toggle('selected', el.dataset.name === selectedProfile)
-      );
-    });
-    list.appendChild(li);
+  const profiles = await api('get_profiles');
+  if (!profiles) return;
+  S.profiles = profiles;
+  renderProfiles();
+}
+
+function renderProfiles() {
+  const container = el('profiles-list');
+  container.innerHTML = '';
+  if (!S.profiles.length) {
+    container.innerHTML = '<div class="profiles-empty">No profiles yet. Add one to get started.</div>';
+    return;
+  }
+  S.profiles.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'profile-card-item' + (S.selectedProfile === p.name ? ' selected' : '');
+    div.addEventListener('click', () => { S.selectedProfile = p.name; renderProfiles(); });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'profile-card-name';
+    nameSpan.textContent = p.name;
+    div.appendChild(nameSpan);
+
+    if (p.active) {
+      const chip = document.createElement('span');
+      chip.className = 'profile-card-chip';
+      chip.textContent = 'ACTIVE';
+      div.appendChild(chip);
+    }
+
+    const btns = document.createElement('div');
+    btns.className = 'profile-card-btns';
+
+    const mkBtn = (label, cls, action) => {
+      const b = document.createElement('button');
+      b.className = 'btn btn-ghost' + (cls ? ' ' + cls : '');
+      b.textContent = label;
+      b.addEventListener('click', e => { e.stopPropagation(); dispatch(action, p.name); });
+      btns.appendChild(b);
+    };
+    mkBtn('Set Active', '',           'setActive');
+    mkBtn('✎',          '',           'rename');
+    mkBtn('✕',          'btn-icon-red','delete');
+
+    div.appendChild(btns);
+    container.appendChild(div);
   });
 }
 
-async function setActiveProfile() {
-  if (!selectedProfile) { await alert2('Select Profile', 'Click a profile first.'); return; }
-  const res = await window.pywebview.api.set_active_profile(selectedProfile);
-  if (res.ok) loadProfiles();
-}
-
-async function promptAddProfile() {
-  const name = await prompt2('New Profile', 'Enter a name for this profile:', '');
-  if (name === null) return;
-  const exists = await window.pywebview.api.check_profile_exists(name);
-  if (exists) { await alert2('Duplicate', `'${name}' already exists.`); return; }
-  await window.pywebview.api.start_calibration(name);
-  // Switch to dashboard so user can see the progress bar
-  switchTab('dashboard');
-}
-
-async function promptRenameProfile() {
-  if (!selectedProfile) { await alert2('Select Profile', 'Click a profile first.'); return; }
-  const newName = await prompt2('Rename', `Rename '${selectedProfile}' to:`, selectedProfile);
-  if (newName === null) return;
-  const res = await window.pywebview.api.rename_profile(selectedProfile, newName);
-  if (!res.ok) {
-    if (res.error === 'duplicate') await alert2('Duplicate', `'${newName}' already exists.`);
-    else await alert2('Error', `Could not rename: ${res.error}`);
-    return;
-  }
-  selectedProfile = newName;
-  loadProfiles();
-}
-
-async function deleteProfile() {
-  if (!selectedProfile) { await alert2('Select Profile', 'Click a profile first.'); return; }
-  const yes = await confirm2(`Delete '${selectedProfile}'?`);
-  if (!yes) return;
-  await window.pywebview.api.delete_profile(selectedProfile);
-  selectedProfile = null;
-  loadProfiles();
-}
-
-/* ── Settings tab ────────────────────────────────────────────────────────── */
+/* ── Settings ───────────────────────────────────────────────────────────── */
 async function loadSettings() {
-  let s;
-  try { s = await window.pywebview.api.get_settings(); } catch (_) { return; }
-  document.getElementById('s-interval').value = s.check_interval;
-  document.getElementById('s-cooldown').value = s.notification_cooldown;
-  document.getElementById('s-sens').value     = s.sensitivity;
-  document.getElementById('s-sens-val').textContent = (+s.sensitivity).toFixed(2);
-  document.getElementById('s-cam').value      = s.camera_index;
-  document.getElementById('s-startup').checked = s.startup_enabled;
+  const s = await api('get_settings');
+  if (!s) return;
+  el('s-interval').value = s.check_interval;
+  el('s-cooldown').value = s.notification_cooldown;
+  el('s-sens').value     = s.sensitivity;
+  el('s-sens-val').textContent = parseFloat(s.sensitivity).toFixed(2);
+  el('s-cam').value      = s.camera_index;
+  el('startup-toggle').dataset.on = s.startup_enabled ? 'true' : 'false';
 }
 
-async function saveSettings() {
-  const data = {
-    check_interval:        parseInt(document.getElementById('s-interval').value, 10),
-    notification_cooldown: parseInt(document.getElementById('s-cooldown').value, 10),
-    sensitivity:           parseFloat(document.getElementById('s-sens').value),
-    camera_index:          parseInt(document.getElementById('s-cam').value, 10),
-    startup_enabled:       document.getElementById('s-startup').checked,
+function gatherSettings() {
+  return {
+    check_interval:        parseInt(el('s-interval').value, 10),
+    notification_cooldown: parseInt(el('s-cooldown').value, 10),
+    sensitivity:           parseFloat(el('s-sens').value),
+    camera_index:          parseInt(el('s-cam').value, 10),
+    startup_enabled:       el('startup-toggle').dataset.on === 'true',
   };
-  const res = await window.pywebview.api.save_settings_data(data);
-  if (res.ok) await alert2('Saved', 'Settings saved.');
-  else        await alert2('Error', `Could not save settings:\n${res.error}`);
 }
 
-/* ── Gesture events from Python ──────────────────────────────────────────── */
+function toggleStartup() {
+  const t = el('startup-toggle');
+  t.dataset.on = t.dataset.on === 'true' ? 'false' : 'true';
+}
+
+/* ── Python event handler ───────────────────────────────────────────────── */
 function handleEvent(type, value) {
   switch (type) {
     case 'hell_toggle':
-      hellMode = !!value;
-      document.body.classList.toggle('hell', hellMode);
-      document.title = hellMode ? 'posture v0.3 🔥' : 'posture v0.3';
-      // Redraw ring immediately with updated CSS colours
-      drawRing(document.getElementById('posture-ring'), null);
+      S.hellMode = !!value;
+      applyHell();
+      drawRing(el('posture-ring'), S.running ? S.quality : null);
       break;
     case 'timeout':
-      document.getElementById('freeze-banner').classList.remove('hidden');
-      document.getElementById('resume-btn').classList.remove('hidden');
+      // frozen state will be reflected in next status poll
       break;
     case 'unfreeze':
-      document.getElementById('freeze-banner').classList.add('hidden');
-      document.getElementById('resume-btn').classList.add('hidden');
+      S.frozen = false;
+      render();
       break;
     case 'snooze':
-      // Status will reflect the new snoozed state on the next poll — no extra work needed
+      // snoozed state updated via next poll
       break;
     case 'calib_timeout':
-      calibInProgress = false;
-      document.getElementById('calib-section').classList.add('hidden');
-      document.getElementById('calib-bar').style.width = '0%';
+      S.calibInProgress = false;
+      render();
       alert2('Calibration Failed', 'No pose detected. Make sure you are visible in the camera.');
       break;
   }
 }
 
-/* ── Tab helper (called from JS) ─────────────────────────────────────────── */
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.tab === name)
-  );
-  document.querySelectorAll('.tab-pane').forEach(p =>
-    p.classList.toggle('visible', p.id === 'tab-' + name)
-  );
-}
-
-/* ── Modal helpers ───────────────────────────────────────────────────────── */
+/* ── Modal system ───────────────────────────────────────────────────────── */
 let _modalResolve = null;
-let _modalMode    = 'alert';   // 'alert' | 'confirm' | 'prompt'
+let _modalMode    = 'alert';
 
-function _showModal({ title, msg, inputVal, okLabel, cancelLabel, showInput, showCancel }) {
-  document.getElementById('modal-title').textContent  = title || '';
-  const msgEl = document.getElementById('modal-msg');
+function _showModal({ title, msg, inputVal, okLabel, showInput, showCancel }) {
+  el('modal-title').textContent = title || '';
+  const msgEl = el('modal-msg');
   if (msg) { msgEl.textContent = msg; msgEl.classList.remove('hidden'); }
   else      { msgEl.classList.add('hidden'); }
-
-  const inp = document.getElementById('modal-input');
+  const inp = el('modal-input');
   if (showInput) {
     inp.value = inputVal || '';
     inp.classList.remove('hidden');
@@ -476,16 +669,15 @@ function _showModal({ title, msg, inputVal, okLabel, cancelLabel, showInput, sho
   } else {
     inp.classList.add('hidden');
   }
-
-  document.getElementById('modal-cancel').classList.toggle('hidden', !showCancel);
-  document.getElementById('modal-ok').textContent = okLabel || 'OK';
-  document.getElementById('modal').classList.remove('hidden');
+  el('modal-cancel').classList.toggle('hidden', !showCancel);
+  el('modal-ok').textContent = okLabel || 'OK';
+  el('modal').classList.remove('hidden');
 }
 
 function modalResolve() {
-  document.getElementById('modal').classList.add('hidden');
+  el('modal').classList.add('hidden');
   if (!_modalResolve) return;
-  const res = _modalMode === 'prompt'  ? document.getElementById('modal-input').value
+  const res = _modalMode === 'prompt'  ? el('modal-input').value
             : _modalMode === 'confirm' ? true
             : undefined;
   _modalResolve(res);
@@ -493,50 +685,60 @@ function modalResolve() {
 }
 
 function modalReject() {
-  document.getElementById('modal').classList.add('hidden');
+  el('modal').classList.add('hidden');
   if (!_modalResolve) return;
   _modalResolve(_modalMode === 'confirm' ? false : null);
   _modalResolve = null;
 }
 
-// Enter key submits the modal
-document.getElementById('modal-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') modalResolve();
+function modalBackdropClick(e) {
+  if (e.target === el('modal')) modalReject();
+}
+
+el('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter')  modalResolve();
   if (e.key === 'Escape') modalReject();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !document.getElementById('modal').classList.contains('hidden'))
-    modalReject();
+  if (e.key === 'Escape' && !el('modal').classList.contains('hidden')) modalReject();
 });
 
 function alert2(title, msg) {
   _modalMode = 'alert';
-  return new Promise(resolve => {
-    _modalResolve = resolve;
+  return new Promise(r => {
+    _modalResolve = r;
     _showModal({ title, msg, okLabel: 'OK', showInput: false, showCancel: false });
   });
 }
-
 function confirm2(title, msg) {
   _modalMode = 'confirm';
-  return new Promise(resolve => {
-    _modalResolve = resolve;
-    _showModal({ title, msg: msg || '', okLabel: 'Yes', cancelLabel: 'No', showInput: false, showCancel: true });
+  return new Promise(r => {
+    _modalResolve = r;
+    _showModal({ title, msg: msg || '', okLabel: 'Yes', showInput: false, showCancel: true });
   });
 }
-
 function prompt2(title, msg, initialVal) {
   _modalMode = 'prompt';
-  return new Promise(resolve => {
-    _modalResolve = resolve;
+  return new Promise(r => {
+    _modalResolve = r;
     _showModal({ title, msg, inputVal: initialVal, okLabel: 'OK', showInput: true, showCancel: true });
   });
 }
 
-/* ── Utility ─────────────────────────────────────────────────────────────── */
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* ── Utilities ──────────────────────────────────────────────────────────── */
+function el(id) { return document.getElementById(id); }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/* ── Boot ───────────────────────────────────────────────────────────────── */
+window.addEventListener('pywebviewready', () => {
+  loadSettings();
+  loadProfiles();
+  render();
+  setInterval(updateFrame,  66);
+  setInterval(updateStatus, 300);
+});
 </script>
 </body>
 </html>
