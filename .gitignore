@@ -37,7 +37,13 @@ desktop.ini
 # Logs / temp
 *.log
 *.tmp
+*.bak
+*.orig
+*~
 tempCodeRunnerFile.py
+
+# PyInstaller (if/when this gets packaged into an .exe)
+*.spec
 
 # Claude Code skills/agents
 .agents/
