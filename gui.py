@@ -190,7 +190,25 @@ class PostureAPI:
             'sensitivity':           self.settings.get('sensitivity', 0.20),
             'camera_index':          self.settings.get('camera_index', 0),
             'startup_enabled':       is_startup_enabled(),
+            'theme':                 self.settings.get('theme', 'refined'),
+            'accent_color':          self.settings.get('accent_color', 'copper'),
         }
+
+    def save_appearance(self, data: dict) -> dict:
+        """Theme/accent picks apply + persist immediately (no Save button needed)."""
+        try:
+            theme  = data.get('theme', 'refined')
+            accent = data.get('accent_color', 'copper')
+            if theme not in ('refined', 'brutalist'):
+                theme = 'refined'
+            if accent not in ('copper', 'sage', 'dusty_teal', 'moss'):
+                accent = 'copper'
+            self.settings['theme']        = theme
+            self.settings['accent_color'] = accent
+            config.save_settings(self.settings)
+            return {'ok': True}
+        except Exception as e:
+            return {'ok': False, 'error': str(e)}
 
     def save_settings_data(self, data: dict) -> dict:
         try:

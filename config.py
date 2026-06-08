@@ -11,6 +11,8 @@ DEFAULT_SETTINGS = {
     "sensitivity": 0.20,
     "camera_index": 0,
     "active_profile": None,
+    "theme": "refined",
+    "accent_color": "copper",
 }
 
 

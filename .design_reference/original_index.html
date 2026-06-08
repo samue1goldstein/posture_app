@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>posture v2</title>
-  <link id="theme-link" rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -39,8 +39,8 @@
           <div class="cam-stripes"></div>
           <div class="cam-ph-content">
             <svg class="silhouette" viewBox="0 0 72 84" fill="none">
-              <circle cx="36" cy="20" r="15" stroke="currentColor" stroke-width="2.2"/>
-              <path d="M6 84 Q6 50 36 50 Q66 50 66 84" stroke="currentColor" stroke-width="2.2" fill="none"/>
+              <circle cx="36" cy="20" r="15" stroke="#6060a0" stroke-width="2.2"/>
+              <path d="M6 84 Q6 50 36 50 Q66 50 66 84" stroke="#6060a0" stroke-width="2.2" fill="none"/>
             </svg>
             <span class="cam-ph-label">camera feed</span>
           </div>
@@ -127,26 +127,6 @@
   <div id="tab-settings" class="tab-pane">
     <div class="settings-wrap">
 
-      <div class="settings-section-label">APPEARANCE</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <label class="settings-lbl">Theme</label>
-          <div class="theme-picker" id="theme-picker">
-            <button class="theme-opt" data-theme="refined"   onclick="dispatch('setTheme','refined')">Refined</button>
-            <button class="theme-opt" data-theme="brutalist" onclick="dispatch('setTheme','brutalist')">Brutalist</button>
-          </div>
-        </div>
-        <div class="settings-row" id="accent-row">
-          <label class="settings-lbl">Accent color</label>
-          <div class="accent-picker" id="accent-picker">
-            <button class="accent-swatch" data-accent="copper"     style="--sw:#d6805c" title="Copper"     onclick="dispatch('setAccent','copper')"></button>
-            <button class="accent-swatch" data-accent="sage"       style="--sw:#8eae84" title="Sage"       onclick="dispatch('setAccent','sage')"></button>
-            <button class="accent-swatch" data-accent="dusty_teal" style="--sw:#6f9c97" title="Dusty Teal" onclick="dispatch('setAccent','dusty_teal')"></button>
-            <button class="accent-swatch" data-accent="moss"       style="--sw:#9ca96a" title="Moss"       onclick="dispatch('setAccent','moss')"></button>
-          </div>
-        </div>
-      </div>
-
       <div class="settings-section-label">DETECTION</div>
       <div class="settings-card">
         <div class="settings-row">
@@ -225,8 +205,6 @@ const S = {
   profiles: [], selectedProfile: null,
   // Save-settings flash
   savedFeedback: false,
-  // Appearance
-  theme: 'refined', accentColor: 'copper',
 };
 
 let _calibDoneHandling = false;
@@ -316,22 +294,6 @@ async function dispatch(action, payload) {
       } else if (res) {
         await alert2('Error', `Could not save:\n${res.error}`);
       }
-      break;
-    }
-
-    case 'setTheme': {
-      if (S.theme === payload) break;
-      S.theme = payload;
-      applyAppearance();
-      await api('save_appearance', { theme: S.theme, accent_color: S.accentColor });
-      break;
-    }
-
-    case 'setAccent': {
-      if (S.accentColor === payload) break;
-      S.accentColor = payload;
-      applyAppearance();
-      await api('save_appearance', { theme: S.theme, accent_color: S.accentColor });
       break;
     }
 
@@ -487,30 +449,6 @@ function render() {
   applyHell();
 }
 
-/* ── Appearance (theme + accent) ────────────────────────────────────────── */
-function applyAppearance() {
-  const link = el('theme-link');
-  const file = S.theme === 'brutalist' ? 'style-brutalist.css' : 'style.css';
-  if (!link.getAttribute('href').endsWith(file)) link.setAttribute('href', file);
-
-  document.documentElement.dataset.theme  = S.theme;
-  document.documentElement.dataset.accent = S.accentColor;
-
-  document.querySelectorAll('.theme-opt').forEach(b =>
-    b.classList.toggle('active', b.dataset.theme === S.theme)
-  );
-  document.querySelectorAll('.accent-swatch').forEach(b =>
-    b.classList.toggle('active', b.dataset.accent === S.accentColor)
-  );
-  el('accent-row').classList.toggle('hidden', S.theme !== 'refined');
-
-  // Re-paint the canvas ring with the new theme's palette/fonts. The
-  // stylesheet swap needs a tick to apply before computed styles update.
-  requestAnimationFrame(() => requestAnimationFrame(() =>
-    drawRing(el('posture-ring'), S.running ? S.quality : null)
-  ));
-}
-
 /* ── Hell mode ──────────────────────────────────────────────────────────── */
 function applyHell() {
   document.body.classList.toggle('hell', S.hellMode);
@@ -528,13 +466,6 @@ function cssVar(name) {
 function drawRing(canvas, quality) {
   const ctx = canvas.getContext('2d');
   const size = 162, tw = 14, cx = 81, cy = 81, r = 63;
-  const brutal = document.documentElement.dataset.theme === 'brutalist';
-
-  const dataFont  = brutal ? '700 25px "Cascadia Mono", Consolas, monospace' : '600 25px "Cascadia Mono", Consolas, monospace';
-  const noDataFont= brutal ? '700 26px "Cascadia Mono", Consolas, monospace' : '600 28px "Cascadia Mono", Consolas, monospace';
-  const labelFont = brutal ? '700 9px "Cascadia Mono", Consolas, monospace'  : '600 10px "Bahnschrift", "Segoe UI", sans-serif';
-  const noDataSym = brutal ? '--' : '—';
-  const noDataTxt = brutal ? 'NO SIGNAL' : 'no data';
 
   ctx.clearRect(0, 0, size, size);
   ctx.fillStyle = cssVar('--card');
@@ -550,40 +481,33 @@ function drawRing(canvas, quality) {
   if (quality === null || quality === undefined) {
     ctx.fillStyle = cssVar('--muted');
     ctx.textAlign = 'center';
-    ctx.font = noDataFont;
-    ctx.fillText(noDataSym, cx, cy + 10);
-    ctx.font = labelFont;
+    ctx.font = 'bold 30px "Segoe UI", sans-serif';
+    ctx.fillText('—', cx, cy + 10);
+    ctx.font = '11px "Segoe UI", sans-serif';
     ctx.fillStyle = cssVar('--faint');
-    ctx.fillText(noDataTxt, cx, cy + 30);
+    ctx.fillText('no data', cx, cy + 30);
     return;
   }
 
-  const colors = brutal
-    ? { good: '#4af626', fair: '#ffcc00', poor: '#ff453a' }
-    : { good: '#90bd8a', fair: '#d6a35d', poor: '#d3786c' };
-  const labels = brutal
-    ? { good: 'NOMINAL', fair: 'CAUTION', poor: 'CRITICAL' }
-    : { good: 'good',    fair: 'fair',    poor: 'poor' };
-  const tier  = quality >= 0.65 ? 'good' : quality >= 0.35 ? 'fair' : 'poor';
-  const color = colors[tier];
-  const label = labels[tier];
+  const color = quality >= 0.65 ? '#4ade80' : quality >= 0.35 ? '#f59e0b' : '#f87171';
+  const label = quality >= 0.65 ? 'Good'    : quality >= 0.35 ? 'Fair'    : 'Poor';
 
   if (quality > 0.002) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + quality * 2 * Math.PI, false);
     ctx.strokeStyle = color;
     ctx.lineWidth = tw;
-    ctx.lineCap = brutal ? 'butt' : 'round';
+    ctx.lineCap = 'round';
     ctx.stroke();
   }
 
   ctx.fillStyle = cssVar('--text');
   ctx.textAlign = 'center';
-  ctx.font = dataFont;
+  ctx.font = 'bold 26px "Segoe UI", sans-serif';
   ctx.fillText(Math.round(quality * 100) + '%', cx, cy + 9);
 
   ctx.fillStyle = color;
-  ctx.font = labelFont;
+  ctx.font = 'bold 11px "Segoe UI", sans-serif';
   ctx.fillText(label, cx, cy + 27);
 }
 
@@ -685,9 +609,6 @@ async function loadSettings() {
   el('s-sens-val').textContent = parseFloat(s.sensitivity).toFixed(2);
   el('s-cam').value      = s.camera_index;
   el('startup-toggle').dataset.on = s.startup_enabled ? 'true' : 'false';
-  S.theme       = s.theme        || 'refined';
-  S.accentColor = s.accent_color || 'copper';
-  applyAppearance();
 }
 
 function gatherSettings() {
@@ -821,7 +742,6 @@ function escHtml(s) {
 
 /* ── Boot ───────────────────────────────────────────────────────────────── */
 window.addEventListener('pywebviewready', () => {
-  applyAppearance();
   loadSettings();
   loadProfiles();
   render();
