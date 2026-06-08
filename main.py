@@ -32,7 +32,7 @@ def main() -> None:
     def _on_bad_posture(score: float) -> None:
         if hell_state[0]:
             send_notification(
-                "🔥 SIT UP STRAIGHT 🔥",
+                "SIT UP STRAIGHT",
                 f"Your posture score is: {score:.0%}",
             )
         else:
@@ -41,7 +41,16 @@ def main() -> None:
                 f"Time to straighten up!  Slouch score: {score:.0%}",
             )
 
-    detector          = PostureDetector(on_bad_posture=_on_bad_posture)
+    def _on_low_light() -> None:
+        send_notification(
+            "Room too dark",
+            "Can't find you in frame — turn on a light for accurate tracking.",
+        )
+
+    detector          = PostureDetector(
+        on_bad_posture=_on_bad_posture,
+        on_low_light=_on_low_light,
+    )
     detector.settings = settings
 
     saved_name = settings.get("active_profile")
@@ -85,8 +94,7 @@ def main() -> None:
         tray, "icon", _make_tray_icon(paused=paused)
     )
 
-    # Show on first run (no profiles), hide otherwise (starts in tray)
-    window.run(show_initially=not bool(pm.names()))
+    window.run(show_initially=True)
 
     # Reached here after window.destroy() — clean up
     detector.stop()

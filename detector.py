@@ -40,6 +40,12 @@ _WEIGHTS = {
     "nose_x_offset":  0.5,
 }
 
+# Low-light detection: mean grayscale brightness (0-255) below this, with no
+# pose landmarks found, is treated as "the room is too dark to track you".
+LOW_LIGHT_THRESHOLD     = 50
+LOW_LIGHT_STREAK_FRAMES = 45       # ~3s @ 15fps of sustained darkness before alerting
+LOW_LIGHT_COOLDOWN_SEC  = 5 * 60   # don't repeat the alert more than once per 5 minutes
+
 
 def ensure_model() -> Path:
     p = APP_DIR / "pose_landmarker_lite.task"
@@ -129,12 +135,14 @@ class PostureDetector:
         on_freeze_toggle:  Optional[Callable] = None,
         on_hell_toggle:    Optional[Callable] = None,
         on_timeout:        Optional[Callable] = None,
+        on_low_light:      Optional[Callable] = None,
     ):
         self.on_bad_posture   = on_bad_posture   # (score: float)
         self.on_frame         = on_frame         # (frame_rgb, metrics)
         self.on_freeze_toggle = on_freeze_toggle # ()
         self.on_hell_toggle   = on_hell_toggle   # ()
         self.on_timeout       = on_timeout       # ()
+        self.on_low_light     = on_low_light     # ()
 
         self.settings: dict              = {}
         self.active_profile: Optional[dict]  = None
@@ -145,6 +153,8 @@ class PostureDetector:
 
         self._last_notif  = 0.0
         self._last_check  = 0.0
+        self._low_light_streak     = 0
+        self._last_low_light_notif = 0.0
         self._timeout_until = 0.0        # epoch time when T-sign pause expires
         self.notifications_enabled = True # open-hand snooze toggle
 
@@ -194,6 +204,31 @@ class PostureDetector:
 
     def calibration_progress(self) -> float:
         return len(self._calib_buf) / self.CALIB_FRAMES
+
+    def _check_low_light(self, frame: np.ndarray) -> None:
+        """Track sustained darkness + no detected pose; alert the user once it
+        looks like the room is too dark for tracking rather than a momentary
+        occlusion."""
+        gray       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        brightness = float(np.mean(gray))
+
+        if brightness >= LOW_LIGHT_THRESHOLD:
+            self._low_light_streak = 0
+            return
+
+        self._low_light_streak += 1
+        if self._low_light_streak < LOW_LIGHT_STREAK_FRAMES:
+            return
+
+        now = time.time()
+        if (
+            self.notifications_enabled
+            and not self.is_paused()
+            and now - self._last_low_light_notif >= LOW_LIGHT_COOLDOWN_SEC
+        ):
+            self._last_low_light_notif = now
+            if self.on_low_light:
+                self.on_low_light()
 
     # ── Detection loop ────────────────────────────────────────────────────
 
@@ -263,6 +298,9 @@ class PostureDetector:
                     lm_list = pose_result.pose_landmarks[0]
                     _draw_pose(annotated, lm_list)
                     metrics = extract_metrics(lm_list)
+                    self._low_light_streak = 0
+                else:
+                    self._check_low_light(frame)
 
                 # ── Hand detection (every 3rd frame ≈ 5 fps) ────────────
                 if frame_num % 3 == 0:
