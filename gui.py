@@ -199,7 +199,7 @@ class PostureAPI:
         try:
             theme  = data.get('theme', 'refined')
             accent = data.get('accent_color', 'copper')
-            if theme not in ('refined', 'brutalist'):
+            if theme != 'refined':
                 theme = 'refined'
             if accent not in ('copper', 'sage', 'dusty_teal', 'moss'):
                 accent = 'copper'
@@ -365,9 +365,4 @@ class MainWindow:
         self._win = win
         self.api._set_window(win)
 
-        def on_closing():
-            win.hide()
-            return False  # prevent window destruction; use tray Quit to exit
-
-        win.events.closing += on_closing
         webview.start()

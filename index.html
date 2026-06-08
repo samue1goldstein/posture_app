@@ -129,13 +129,6 @@
 
       <div class="settings-section-label">APPEARANCE</div>
       <div class="settings-card">
-        <div class="settings-row">
-          <label class="settings-lbl">Theme</label>
-          <div class="theme-picker" id="theme-picker">
-            <button class="theme-opt" data-theme="refined"   onclick="dispatch('setTheme','refined')">Refined</button>
-            <button class="theme-opt" data-theme="brutalist" onclick="dispatch('setTheme','brutalist')">Brutalist</button>
-          </div>
-        </div>
         <div class="settings-row" id="accent-row">
           <label class="settings-lbl">Accent color</label>
           <div class="accent-picker" id="accent-picker">
@@ -319,14 +312,6 @@ async function dispatch(action, payload) {
       break;
     }
 
-    case 'setTheme': {
-      if (S.theme === payload) break;
-      S.theme = payload;
-      applyAppearance();
-      await api('save_appearance', { theme: S.theme, accent_color: S.accentColor });
-      break;
-    }
-
     case 'setAccent': {
       if (S.accentColor === payload) break;
       S.accentColor = payload;
@@ -488,21 +473,26 @@ function render() {
 }
 
 /* ── Appearance (theme + accent) ────────────────────────────────────────── */
+// Hell mode hijacks the stylesheet — the brutalist theme *is* the hell theme.
+// The user's chosen base theme (S.theme) stays untouched and is restored
+// the moment hell mode ends.
+function effectiveTheme() {
+  return S.hellMode ? 'brutalist' : S.theme;
+}
+
 function applyAppearance() {
-  const link = el('theme-link');
-  const file = S.theme === 'brutalist' ? 'style-brutalist.css' : 'style.css';
+  const link  = el('theme-link');
+  const theme = effectiveTheme();
+  const file  = theme === 'brutalist' ? 'style-brutalist.css' : 'style.css';
   if (!link.getAttribute('href').endsWith(file)) link.setAttribute('href', file);
 
-  document.documentElement.dataset.theme  = S.theme;
+  document.documentElement.dataset.theme  = theme;
   document.documentElement.dataset.accent = S.accentColor;
 
-  document.querySelectorAll('.theme-opt').forEach(b =>
-    b.classList.toggle('active', b.dataset.theme === S.theme)
-  );
   document.querySelectorAll('.accent-swatch').forEach(b =>
     b.classList.toggle('active', b.dataset.accent === S.accentColor)
   );
-  el('accent-row').classList.toggle('hidden', S.theme !== 'refined');
+  el('accent-row').classList.toggle('hidden', theme !== 'refined');
 
   // Re-paint the canvas ring with the new theme's palette/fonts. The
   // stylesheet swap needs a tick to apply before computed styles update.
@@ -513,11 +503,11 @@ function applyAppearance() {
 
 /* ── Hell mode ──────────────────────────────────────────────────────────── */
 function applyHell() {
-  document.body.classList.toggle('hell', S.hellMode);
   el('hell-bar').classList.toggle('hidden', !S.hellMode);
   const dashBtn = el('tab-btn-dashboard');
   if (dashBtn) dashBtn.textContent = S.hellMode ? 'Dashboard 🔥' : 'Dashboard';
   document.title = S.hellMode ? 'posture v2 🔥' : 'posture v2';
+  applyAppearance();
 }
 
 /* ── Score ring canvas ──────────────────────────────────────────────────── */
@@ -685,7 +675,9 @@ async function loadSettings() {
   el('s-sens-val').textContent = parseFloat(s.sensitivity).toFixed(2);
   el('s-cam').value      = s.camera_index;
   el('startup-toggle').dataset.on = s.startup_enabled ? 'true' : 'false';
-  S.theme       = s.theme        || 'refined';
+  // 'brutalist' is no longer a user-selectable base theme — it's reserved
+  // for hell mode (see effectiveTheme()). Clamp any stale saved value.
+  S.theme       = s.theme === 'brutalist' ? 'refined' : (s.theme || 'refined');
   S.accentColor = s.accent_color || 'copper';
   applyAppearance();
 }

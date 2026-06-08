@@ -26,11 +26,6 @@
 
   --t: 80ms linear;
 }
-body.hell {
-  --accent:    #ff2d1a;
-  --accentDim: #d11f0e;
-  --accentLo:  rgba(255, 45, 26, 0.18);
-}
 
 /* ── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
@@ -505,24 +500,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .save-btn-wrap { padding-top: 8px; }
 
-/* ── Appearance pickers ─────────────────────────────────────────────────── */
-.theme-picker, .accent-picker { display: flex; align-items: center; gap: 6px; }
-.theme-opt {
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  background: var(--raised);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  outline: none;
-  transition: background var(--t), color var(--t), border-color var(--t);
-}
-.theme-opt:hover  { color: var(--text); border-color: var(--text); }
-.theme-opt.active { color: var(--onAccent); background: var(--accent); border-color: var(--accent); }
+/* ── Appearance picker ──────────────────────────────────────────────────── */
+.accent-picker { display: flex; align-items: center; gap: 6px; }
 
 .accent-swatch {
   width: 19px; height: 19px;
