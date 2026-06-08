@@ -37,6 +37,7 @@ desktop.ini
 # Logs / temp
 *.log
 *.tmp
+tempCodeRunnerFile.py
 
 # Claude Code skills/agents
 .agents/
