@@ -37,3 +37,8 @@ desktop.ini
 # Logs / temp
 *.log
 *.tmp
+
+# Claude Code skills/agents
+.agents/
+.claude/
+skills-lock.json

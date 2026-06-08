@@ -1,19 +1,24 @@
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --bg:         #111118;
-  --card:       #1c1c28;
-  --raised:     #2e2e40;
-  --border:     #36364a;
-  --borderMid:  #4a4a62;
-  --text:       #f0f0ff;
-  --muted:      #9494b8;
-  --faint:      #6060a0;
-  --accent:     #818cf8;
-  --accentDim:  #4338ca;
-  --accentLo:   rgba(129,140,248,0.12);
+  --bg:         #121214;
+  --card:       #1c1c1e;
+  --raised:     #2c2c2e;
+  --border:     #38383a;
+  --borderMid:  #48484a;
+  --text:       #f5f5f7;
+  --muted:      #a0a0a3;
+  --faint:      #707073;
+  --accent:     #ffffff;
+  --accentDim:  #c8c8c8;
+  --accentLo:   rgba(255,255,255,0.10);
+  --onAccent:   #18181a;
   --green:      #4ade80;
   --amber:      #fbbf24;
   --red:        #f87171;
+
+  /* Strong, intentional curves — the built-in CSS easings feel weak */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 body.hell {
   --accent:    #ef4444;
@@ -79,10 +84,11 @@ html, body {
   cursor: pointer;
   outline: none;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  transition: background 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
 }
 .tab-btn:hover  { background: var(--raised); color: var(--text); }
 .tab-btn.active { background: var(--raised); color: var(--text); }
+.tab-btn:active { transform: scale(0.96); }
 
 /* ── Tab panes ──────────────────────────────────────────────────────────── */
 .tab-pane { display: none; height: calc(100vh - 44px); overflow: hidden; }
@@ -123,7 +129,7 @@ html, body {
   width: 100%;
   height: 246px;
   background: #0d0d0f;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   overflow: hidden;
   flex-shrink: 0;
@@ -171,7 +177,7 @@ html, body {
   font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   letter-spacing: 0.04em;
 }
 .cam-skeleton-text {
@@ -208,7 +214,7 @@ html, body {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   background: rgba(255,255,255,0.05);
@@ -222,9 +228,10 @@ html, body {
 .calib-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 10px 12px;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .calib-label {
   font-size: 11px;
@@ -242,7 +249,7 @@ html, body {
   width: 0%;
   background: var(--accent);
   border-radius: 3px;
-  transition: width 0.1s linear;
+  transition: width 100ms linear;
 }
 
 /* ── Action rows ────────────────────────────────────────────────────────── */
@@ -264,9 +271,11 @@ html, body {
   cursor: pointer;
   outline: none;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out),
+              border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
 }
-.btn-primary             { background: var(--accent);   color: var(--text); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn-primary             { background: var(--accent); color: var(--onAccent); font-weight: 600; }
 .btn-primary:hover       { background: var(--accentDim); }
 .btn-ghost               { background: var(--raised); border: 1px solid var(--border); color: var(--text); }
 .btn-ghost:hover         { background: var(--borderMid); }
@@ -275,17 +284,23 @@ html, body {
 .btn-resume              { color: var(--green); }
 .btn-icon-red            { color: var(--red); }
 .btn:disabled            { opacity: 0.45; cursor: default; }
+.btn:disabled:active     { transform: none; }
 
 /* ── Score ring card ────────────────────────────────────────────────────── */
 .score-card {
   background: var(--card);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
+#posture-ring {
+  transition: transform 160ms var(--ease-out);
+}
+#posture-ring:active { transform: scale(0.98); }
 .score-label {
   font-size: 10px;
   font-weight: 700;
@@ -299,9 +314,10 @@ html, body {
 /* ── Active profile card ────────────────────────────────────────────────── */
 .active-profile-card {
   background: var(--card);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .active-profile-row {
   display: flex;
@@ -319,7 +335,7 @@ html, body {
   color: var(--accent);
   background: var(--accentLo);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 1px 5px;
 }
 
@@ -341,7 +357,7 @@ html, body {
 .profiles-empty  {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 32px;
   text-align: center;
   color: var(--faint);
@@ -350,21 +366,22 @@ html, body {
 .profile-card-item {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 11px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 130ms var(--ease-out), border-color 130ms var(--ease-out), transform 120ms var(--ease-out);
 }
 .profile-card-item:hover    { background: var(--raised); }
+.profile-card-item:active   { transform: scale(0.99); }
 .profile-card-item.selected { background: var(--accentLo); border-color: var(--accent); }
 .profile-card-name  { font-size: 13px; font-weight: 700; flex: 1; }
 .profile-card-chip  {
   font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
   color: var(--accent); background: var(--accentLo);
-  border: 1px solid var(--accent); border-radius: 4px; padding: 1px 5px;
+  border: 1px solid var(--accent); border-radius: 999px; padding: 1px 5px;
 }
 .profile-card-btns { display: flex; gap: 4px; }
 .profile-card-btns .btn { font-size: 11px; padding: 4px 8px; }
@@ -389,9 +406,10 @@ html, body {
 .settings-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   margin-bottom: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .settings-row {
   display: flex;
@@ -409,7 +427,7 @@ html, body {
   padding: 5px 8px;
   background: var(--raised);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text);
   font-family: inherit;
   font-size: 13px;
@@ -453,8 +471,9 @@ input[type="range"]::-webkit-slider-thumb {
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 120ms var(--ease-out);
 }
+.toggle-switch:active { transform: scale(0.95); }
 .toggle-switch[data-on="true"] { background: var(--accent); border-color: var(--accent); }
 .toggle-thumb {
   position: absolute;
@@ -462,9 +481,9 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px; height: 16px;
   background: var(--text);
   border-radius: 50%;
-  transition: transform 0.15s;
+  transition: transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
-.toggle-switch[data-on="true"] .toggle-thumb { transform: translateX(18px); }
+.toggle-switch[data-on="true"] .toggle-thumb { transform: translateX(18px); background: var(--onAccent); }
 
 .save-btn-wrap { padding-top: 6px; }
 
@@ -477,22 +496,29 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-out);
 }
+.modal-overlay.open { opacity: 1; }
 .modal-box {
   background: var(--card);
   border: 1px solid var(--borderMid);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 22px 24px;
   min-width: 300px;
   max-width: 400px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transform-origin: center;
+  transform: scale(0.95);
+  transition: transform 180ms var(--ease-out);
 }
+.modal-overlay.open .modal-box { transform: scale(1); }
 .modal-title  { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
 .modal-msg    { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.55; white-space: pre-line; }
 .modal-input  {
   width: 100%; padding: 7px 10px;
   background: var(--raised); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text);
+  border-radius: 6px; color: var(--text);
   font-family: inherit; font-size: 13px; outline: none;
   margin-bottom: 14px;
 }

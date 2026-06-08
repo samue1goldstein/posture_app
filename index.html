@@ -671,11 +671,20 @@ function _showModal({ title, msg, inputVal, okLabel, showInput, showCancel }) {
   }
   el('modal-cancel').classList.toggle('hidden', !showCancel);
   el('modal-ok').textContent = okLabel || 'OK';
-  el('modal').classList.remove('hidden');
+  const m = el('modal');
+  m.classList.remove('hidden');
+  // Double rAF: let the browser paint the entering state before transitioning to open
+  requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('open')));
+}
+
+function _closeModal() {
+  const m = el('modal');
+  m.classList.remove('open');
+  setTimeout(() => m.classList.add('hidden'), 180);
 }
 
 function modalResolve() {
-  el('modal').classList.add('hidden');
+  _closeModal();
   if (!_modalResolve) return;
   const res = _modalMode === 'prompt'  ? el('modal-input').value
             : _modalMode === 'confirm' ? true
@@ -685,7 +694,7 @@ function modalResolve() {
 }
 
 function modalReject() {
-  el('modal').classList.add('hidden');
+  _closeModal();
   if (!_modalResolve) return;
   _modalResolve(_modalMode === 'confirm' ? false : null);
   _modalResolve = null;
